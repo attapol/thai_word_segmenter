@@ -1,6 +1,8 @@
 import codecs
 import sys
 
+from data_util import iterate_seq
+
 def crf_featurize(pattern_list, file_name):
     output_file_name = file_name + '.feature'
     with codecs.open(file_name, encoding='utf8') as f, \
@@ -22,16 +24,6 @@ def read_template(template):
             patterns.append(pattern)
     return patterns
 
-def iterate_seq(f):
-    seq = []
-    for line in f:
-        line = line.strip()
-        if line == '' and len(seq) > 0:
-            yield seq
-            seq = []
-        else:
-            character, char_type, label = line.split(' ')
-            seq.append((character, char_type, label))
 
 def featurize(pattern_list, seq):
     label_feature_seq = []
