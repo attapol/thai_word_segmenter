@@ -56,7 +56,10 @@ def main():
             scope='BiLSTM')
 
     with tf.name_scope('tagging'):
-        W = tf.Variable(tf.random_uniform(minval=-1, maxval=1, shape=[2 * n_hidden, n_classes]), name='W')
+        W = tf.Variable(tf.random_uniform(minval=0,
+                                          maxval= 2.0 / np.sqrt(2 * n_hidden),
+                                          shape=[2 * n_hidden, n_classes]),
+                        name='W')
         b = tf.Variable(tf.zeros(n_classes), name='b')
 
         parameter_summaries.append(tf.summary.histogram('weights', W))
@@ -240,11 +243,6 @@ def load_data(file_name, char_dict, max_seq_length=50):
 
     return np.matrix(char_index_seq_list, dtype=int), np.matrix(label_seq_list, dtype=int), np.array(seq_length_list, dtype=int)
 
-
-def load_embedding(embedding_file):
-
-
-    pass
 
 def batch_iter(data, batch_size, shuffle=True):
     """
