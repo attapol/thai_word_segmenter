@@ -10,12 +10,23 @@ from data_util import iterate_seq
 def main():
 
     n_steps = 85
-    n_input = 15
     n_hidden = 20
     n_classes = 2
+    pretrained_char_vector = True
+
+
+    if pretrained_char_vector:
+        char_dict = CharDict('char_vectors/vec.txt')
+        n_vocab = char_dict.size()
+        embeddings = char_dict.char_matrix
+        n_input = embeddings.shape[1]
+    else:
+        char_dict = CharDict()
+        n_vocab = char_dict.size()
+        n_input = 15
+        embeddings = np.random.rand(n_vocab, n_input) * 0.0001
 
     #data_x, data_y, data_length = load_fake_data()
-    char_dict = CharDict()
     data_x, data_y, data_length = load_data('./data/train_orchid97_features.bi', char_dict, n_steps)
     dev_x, dev_y, dev_length = load_data('./data/dev_orchid97_features.bi', char_dict, n_steps)
 
@@ -24,9 +35,7 @@ def main():
     sequence_lengths = tf.placeholder(tf.int32, shape=[None], name='sequence_lengths')
     mask = tf.sequence_mask(sequence_lengths)
 
-    n_vocab = char_dict.size()
-    embeddings = [] # load the pretrained character embeddings or create new here
-    embeddings = np.random.rand(n_vocab, n_input) * 0.0001
+
     char_lexicon = tf.Variable(embeddings, dtype=tf.float32, trainable=True)
     parameter_summaries = []
     parameter_summaries.append(tf.summary.histogram('Char_lexicon', char_lexicon))
@@ -96,7 +105,7 @@ def main():
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        test_parse(class_prediction, char_ids, sequence_lengths, sess, n_steps)
+        test_parse(char_dict, class_prediction, char_ids, sequence_lengths, sess, n_steps)
 
         step = 1
         display_step = 5
@@ -132,13 +141,12 @@ def load_fake_data():
     length = np.array([3, 4, 3, 3], dtype=int)
     return x, y, length
 
-def test_parse(class_prediction_tensor, char_ids, sequence_lengths, sess, max_seq_length):
+def test_parse(char_dict, class_prediction_tensor, char_ids, sequence_lengths, sess, max_seq_length):
     thai_texts = [u'อุบัติเหตุสุดหวาดเสียวผลจากพายุฝนที่ถล่มลงมาอย่างหนักในช่วงเช้า',
                   u'จอห์นเดินทางกลับสู่ประเทศไทย',
                   u'สถาบันเกอเต้จากประเทศแถบยุโรป',
                   u'พรุ่งนี้จะอยู่บ้านอาบน้ำกินนมนอน'
                   ]
-    char_dict = CharDict()
     char_index_seq_list = []
     data_length = []
 
@@ -146,7 +154,7 @@ def test_parse(class_prediction_tensor, char_ids, sequence_lengths, sess, max_se
         data_length.append(len(thai_text))
         num_padding = max_seq_length - len(thai_text)
         char_index_seq = [char_dict.to_index(x) for x in thai_text]
-        char_index_seq = char_index_seq + [char_dict.to_index(char_dict.PADDING) for _ in range(num_padding)]
+        char_index_seq = char_index_seq + [char_dict.to_index(char_dict.UNK) for _ in range(num_padding)]
         char_index_seq_list.append(char_index_seq)
 
     prediction = sess.run([class_prediction_tensor],
@@ -168,29 +176,47 @@ def test_parse(class_prediction_tensor, char_ids, sequence_lengths, sess, max_se
 
 class CharDict(object):
 
-    PADDING = '__PADDING_CHAR__'
+    UNK = u'__UNK__'
 
-    def __init__(self):
-        consonants = [unichr(ord(u'ก') + i) for i in xrange(46)]
-        vowel_set1 = [unichr(ord(u'ฯ') + i) for i in xrange(12)]
-        vowel_tone_numbers =[unichr(ord(u'฿') + i) for i in xrange(29)]
-        thai_char_list = consonants + vowel_set1 + vowel_tone_numbers
-        self.thai_char_to_index = {x:i for i, x in enumerate(thai_char_list)}
-        self.index_to_thai_char = {i:x for i, x in enumerate(thai_char_list)}
+    def __init__(self, embedding_file=None):
+        self.char_matrix = None
+        if embedding_file is None:
+            consonants = [unichr(ord(u'ก') + i) for i in xrange(46)]
+            vowel_set1 = [unichr(ord(u'ฯ') + i) for i in xrange(12)]
+            vowel_tone_numbers =[unichr(ord(u'฿') + i) for i in xrange(29)]
+            thai_char_list = consonants + vowel_set1 + vowel_tone_numbers
+            self.thai_char_to_index = {x:i for i, x in enumerate(thai_char_list)}
+            self.index_to_thai_char = {i:x for i, x in enumerate(thai_char_list)}
+        else:
+            self.thai_char_to_index = {}
+            self.index_to_thai_char = {}
+            with codecs.open(embedding_file, encoding='utf8') as f:
+                vocab_size, num_units = f.readline().strip().split(' ')
+                self.char_matrix = np.zeros([int(vocab_size) + 1, int(num_units)], dtype=np.float32)
+                char_index = 0
+                for line in f:
+                    char, vector_string = line.strip().split(' ', 1)
+                    vector = np.array([float(x) for x in vector_string.split(' ')])
+                    self.char_matrix[char_index, :] = vector
+                    self.index_to_thai_char[char_index] = char
+                    self.thai_char_to_index[char] = char_index
+                    char_index += 1
+
+        num_characters = len(self.thai_char_to_index)
+        self.thai_char_to_index[self.UNK] = num_characters
+        self.index_to_thai_char[num_characters] = self.UNK
 
     def to_index(self, character):
         if character in self.thai_char_to_index:
             return self.thai_char_to_index[character]
-        elif character == self.PADDING:
-            return len(self.thai_char_to_index)
         else:
-            return len(self.thai_char_to_index) + 1
+            return self.thai_char_to_index[self.UNK]
 
     def to_char(self, index):
         return self.index_to_thai_char[index]
 
     def size(self):
-        return len(self.thai_char_to_index) + 2
+        return len(self.thai_char_to_index)
 
 
 def load_data(file_name, char_dict, max_seq_length=50):
@@ -207,13 +233,18 @@ def load_data(file_name, char_dict, max_seq_length=50):
         label_seq = label_seq + [0 for _ in range(num_padding)]
         label_seq_list.append(label_seq)
 
-        char_index_seq = char_index_seq + [char_dict.to_index(char_dict.PADDING) for _ in range(num_padding)]
+        char_index_seq = char_index_seq + [char_dict.to_index(char_dict.UNK) for _ in range(num_padding)]
         char_index_seq_list.append(char_index_seq)
 
     seq_length_list = [len(x) for x in char_index_seq_list]
 
     return np.matrix(char_index_seq_list, dtype=int), np.matrix(label_seq_list, dtype=int), np.array(seq_length_list, dtype=int)
 
+
+def load_embedding(embedding_file):
+
+
+    pass
 
 def batch_iter(data, batch_size, shuffle=True):
     """
