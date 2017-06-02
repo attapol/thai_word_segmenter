@@ -101,7 +101,7 @@ def main():
 
     batch_size = 20
 
-    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+    with tf.Session() as sess:
         batch_writer = tf.summary.FileWriter("./tboard/batch", sess.graph)
         #train_writer = tf.summary.FileWriter("./tboard/train", sess.graph)
         dev_writer = tf.summary.FileWriter("./tboard/dev", sess.graph)
@@ -113,7 +113,7 @@ def main():
         step = 1
         display_step = 5
         num_epoch = 100
-        for ei in xrange(num_epoch):
+        for ei in range(num_epoch):
             for batch_x, batch_y, batch_length in batch_iter([data_x, data_y, data_length], batch_size, shuffle=True):
                 _, l, cp, summ, param_summ = sess.run([train_op, loss, class_prediction, merged_summary, merged_param_summary],
                                       feed_dict={char_ids: batch_x, labels: batch_y, sequence_lengths: batch_length})
@@ -122,20 +122,20 @@ def main():
 
                 acc = sess.run([accuracy],
                                   feed_dict={char_ids: data_x, labels: data_y, sequence_lengths: data_length})
-                print acc
+                print (acc)
 
                 if step % display_step == 0:
                     #_, l, cp, summ = sess.run([train_op, loss, class_prediction, merged_summary],
                                               #feed_dict={char_ids: data_x, labels: data_y, sequence_lengths: data_length})
                     #train_writer.add_summary(summ, step)
-                    test_parse(class_prediction, char_ids, sequence_lengths, sess, n_steps)
+                    test_parse(char_dict, class_prediction, char_ids, sequence_lengths, sess, n_steps)
                     _, l, cp, summ = sess.run([train_op, loss, class_prediction, merged_summary],
                                               feed_dict={char_ids: dev_x, labels: dev_y, sequence_lengths: dev_length})
                     dev_writer.add_summary(summ, step)
-                    print "Iter " + str(step) + ", Minibatch Loss= " + \
-                          "{:.6f}".format(l)
+                    print ("Iter " + str(step) + ", Minibatch Loss= " + \
+                          "{:.6f}".format(l))
                 step += 1
-        print 'Optimization finished'
+        print ('Optimization finished')
 
 
 def load_fake_data():
@@ -162,19 +162,19 @@ def test_parse(char_dict, class_prediction_tensor, char_ids, sequence_lengths, s
 
     prediction = sess.run([class_prediction_tensor],
                               feed_dict={char_ids: char_index_seq_list, sequence_lengths: data_length})[0]
-    for i in xrange(len(thai_texts)):
+    for i in range(len(thai_texts)):
         length = data_length[i]
         thai_text = thai_texts[i]
         labels = prediction[i][0:length]
 
         string_builder = []
-        for j in xrange(length):
+        for j in range(length):
             label = labels[j]
             character = thai_text[j]
             if j != 0 and label == 1:
                 string_builder.append(u'|')
             string_builder.append(character)
-        print ''.join(string_builder)
+        print (''.join(string_builder))
 
 
 class CharDict(object):
@@ -184,9 +184,9 @@ class CharDict(object):
     def __init__(self, embedding_file=None):
         self.char_matrix = None
         if embedding_file is None:
-            consonants = [unichr(ord(u'ก') + i) for i in xrange(46)]
-            vowel_set1 = [unichr(ord(u'ฯ') + i) for i in xrange(12)]
-            vowel_tone_numbers =[unichr(ord(u'฿') + i) for i in xrange(29)]
+            consonants = [chr(ord(u'ก') + i) for i in range(46)]
+            vowel_set1 = [chr(ord(u'ฯ') + i) for i in range(12)]
+            vowel_tone_numbers =[chr(ord(u'฿') + i) for i in range(29)]
             thai_char_list = consonants + vowel_set1 + vowel_tone_numbers
             self.thai_char_to_index = {x:i for i, x in enumerate(thai_char_list)}
             self.index_to_thai_char = {i:x for i, x in enumerate(thai_char_list)}
@@ -249,7 +249,7 @@ def batch_iter(data, batch_size, shuffle=True):
     Generates a batch iterator for a dataset.
     """
     data_size = len(data[0])
-    for i in xrange(1, len(data)):
+    for i in range(1, len(data)):
         assert len(data[i]) == data_size
 
     num_batches = int((data_size - 1) / batch_size) + 1

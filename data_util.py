@@ -1,8 +1,8 @@
 # -*- coding: utf8 -*-
 
-consonants = [unichr(ord(u'ก') + i) for i in xrange(46)]
-vowel_set1 = [unichr(ord(u'ฯ') + i) for i in xrange(12)]
-vowel_tone_numbers =[unichr(ord(u'฿') + i) for i in xrange(29)]
+consonants = [chr(ord(u'ก') + i) for i in range(46)]
+vowel_set1 = [chr(ord(u'ฯ') + i) for i in range(12)]
+vowel_tone_numbers =[chr(ord(u'฿') + i) for i in range(29)]
 thai_char_list = consonants + vowel_set1 + vowel_tone_numbers
 THAI_CHAR_SET = set(thai_char_list)
 
