@@ -101,7 +101,7 @@ def main():
 
     batch_size = 20
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         batch_writer = tf.summary.FileWriter("./tboard/batch", sess.graph)
         #train_writer = tf.summary.FileWriter("./tboard/train", sess.graph)
         dev_writer = tf.summary.FileWriter("./tboard/dev", sess.graph)
